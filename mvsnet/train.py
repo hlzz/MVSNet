@@ -63,9 +63,6 @@ tf.app.flags.DEFINE_float('val_ratio', 0,
 # params for config
 tf.app.flags.DEFINE_string('pretrained_model_ckpt_path', None,
                            """Path to restore the model.""")
-# tf.app.flags.DEFINE_string('pretrained_model_ckpt_path', 
-#                            '/home/yoyo/Documents/software/tfmatch/mvs/tf_model/model.ckpt',
-#                            """Path to restore the model.""")
 tf.app.flags.DEFINE_integer('ckpt_step', 0,
                             """ckpt step.""")
 tf.app.flags.DEFINE_boolean('is_training', True,
@@ -104,6 +101,11 @@ class MVSGenerator:
                 for view in range(self.view_num):
                     image = center_image(cv2.imread(data[2 * view]))
                     cam = load_cam(open(data[2 * view + 1]))
+                    # NOTE(tianwei): the default intrinsic parameters is generated at (640, 512) resolution
+                    scale1 = float(FLAGS.max_h) / 512
+                    scale2 = float(FLAGS.max_w) / 640
+                    assert scale1 == scale2
+                    cam = scale_camera(cam, scale=scale1)
                     cam[1][3][1] = cam[1][3][1] * FLAGS.interval_scale
                     images.append(image)
                     cams.append(cam)
