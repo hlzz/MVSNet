@@ -239,8 +239,29 @@ def gen_dtu_resized_path(dtu_data_folder, mode='training'):
         data_set = validation_set
 
     # for each dataset
-    for i in data_set:
+    def _get_dtu_img_cam_depth_paths(lighting_index, pose_index):
+        paths = []
+        # ref image
+        ref_index = int(cluster_list[22 * pose_index + 1])
+        ref_image_path = os.path.join(
+            image_folder, ('rect_%03d_%d_r5000.png' % ((ref_index + 1), lighting_index)))
+        ref_cam_path = os.path.join(cam_folder, ('%08d_cam.txt' % ref_index))
+        paths.append(ref_image_path)
+        paths.append(ref_cam_path)
+        # view images
+        for view in range(FLAGS.view_num - 1):
+            view_index = int(cluster_list[22 * pose_index + 2 * view + 3])
+            view_image_path = os.path.join(
+                image_folder, ('rect_%03d_%d_r5000.png' % ((view_index + 1), lighting_index)))
+            view_cam_path = os.path.join(cam_folder, ('%08d_cam.txt' % view_index))
+            paths.append(view_image_path)
+            paths.append(view_cam_path)
+        # depth path
+        depth_image_path = os.path.join(depth_folder, ('depth_map_%04d.pfm' % ref_index))
+        paths.append(depth_image_path)
+        return paths
 
+    for i in data_set:
         image_folder = os.path.join(dtu_data_folder, ('Rectified/scan%d_train' % i))
         cam_folder = os.path.join(dtu_data_folder, 'Cameras/train')
         depth_folder = os.path.join(dtu_data_folder, ('Depths/scan%d_train' % i))
@@ -250,145 +271,14 @@ def gen_dtu_resized_path(dtu_data_folder, mode='training'):
             for j in range(0, 7):
                 # for each reference image
                 for p in range(0, int(cluster_list[0])):
-                    paths = []
-                    # ref image
-                    ref_index = int(cluster_list[22 * p + 1])
-                    ref_image_path = os.path.join(
-                        image_folder, ('rect_%03d_%d_r5000.png' % ((ref_index + 1), j)))
-                    ref_cam_path = os.path.join(cam_folder, ('%08d_cam.txt' % ref_index))
-                    paths.append(ref_image_path)
-                    paths.append(ref_cam_path)
-                    # view images
-                    for view in range(FLAGS.view_num - 1):
-                        view_index = int(cluster_list[22 * p + 2 * view + 3])
-                        view_image_path = os.path.join(
-                            image_folder, ('rect_%03d_%d_r5000.png' % ((view_index + 1), j)))
-                        view_cam_path = os.path.join(cam_folder, ('%08d_cam.txt' % view_index))
-                        paths.append(view_image_path)
-                        paths.append(view_cam_path)
-                    # depth path
-                    depth_image_path = os.path.join(depth_folder, ('depth_map_%04d.pfm' % ref_index))
-                    paths.append(depth_image_path)
+                    paths = _get_dtu_img_cam_depth_paths(j, p)
                     sample_list.append(paths)
         elif mode == 'validation':
-            j = 3
             # for each reference image
             for p in range(0, int(cluster_list[0])):
-                paths = []
-                # ref image
-                ref_index = int(cluster_list[22 * p + 1])
-                ref_image_path = os.path.join(
-                    image_folder, ('rect_%03d_%d_r5000.png' % ((ref_index + 1), j)))
-                ref_cam_path = os.path.join(cam_folder, ('%08d_cam.txt' % ref_index))
-                paths.append(ref_image_path)
-                paths.append(ref_cam_path)
-                # view images
-                for view in range(FLAGS.view_num - 1):
-                    view_index = int(cluster_list[22 * p + 2 * view + 3])
-                    view_image_path = os.path.join(
-                        image_folder, ('rect_%03d_%d_r5000.png' % ((view_index + 1), j)))
-                    view_cam_path = os.path.join(cam_folder, ('%08d_cam.txt' % view_index))
-                    paths.append(view_image_path)
-                    paths.append(view_cam_path)
-                # depth path
-                depth_image_path = os.path.join(depth_folder, ('depth_map_%04d.pfm' % ref_index))
-                paths.append(depth_image_path)
+                paths = _get_dtu_img_cam_depth_paths(3, p)  # lighting_index 3 has the most consistent lighting
                 sample_list.append(paths)
         
-    return sample_list
-
-def gen_dtu_mvs_path(dtu_data_folder, mode='training'):
-    """ generate data paths for dtu dataset """
-    sample_list = []
-    
-    # parse camera pairs
-    cluster_file_path = dtu_data_folder + '/Cameras/pair.txt'
-    cluster_list = open(cluster_file_path).read().split()
-
-    # 3 sets
-    training_set = [2, 6, 7, 8, 14, 16, 18, 19, 20, 22, 30, 31, 36, 39, 41, 42, 44,
-                    45, 46, 47, 50, 51, 52, 53, 55, 57, 58, 60, 61, 63, 64, 65, 68, 69, 70, 71, 72,
-                    74, 76, 83, 84, 85, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97, 98, 99, 100,
-                    101, 102, 103, 104, 105, 107, 108, 109, 111, 112, 113, 115, 116, 119, 120,
-                    121, 122, 123, 124, 125, 126, 127, 128]
-    validation_set = [3, 5, 17, 21, 28, 35, 37, 38, 40, 43, 56, 59, 66, 67, 82, 86, 106, 117]
-    evaluation_set = [1, 4, 9, 10, 11, 12, 13, 15, 23, 24, 29, 32, 33, 34, 48, 49, 62, 75, 77, 
-                      110, 114, 118]
-
-    # for each dataset
-    data_set = []
-    if mode == 'training':
-        data_set = training_set
-    elif mode == 'validation':
-        data_set = validation_set
-    elif mode == 'evaluation':
-        data_set = evaluation_set
-
-    # for each dataset
-    for i in data_set:
-
-        image_folder = os.path.join(dtu_data_folder, ('Rectified/scan%d' % i))
-        cam_folder = os.path.join(dtu_data_folder, 'Cameras')
-        depth_folder = os.path.join(dtu_data_folder, ('Depths/scan%d' % i))
-
-        if mode == 'training':
-            # for each lighting
-            for j in range(0, 7):
-                # for each reference image
-                for p in range(0, int(cluster_list[0])):
-                    paths = []
-                    # ref image
-                    ref_index = int(cluster_list[22 * p + 1])
-                    ref_image_path = os.path.join(
-                        image_folder, ('rect_%03d_%d_r5000.png' % ((ref_index + 1), j)))
-                    ref_cam_path = os.path.join(cam_folder, ('%08d_cam.txt' % ref_index))
-                    paths.append(ref_image_path)
-                    paths.append(ref_cam_path)
-                    # view images
-                    for view in range(FLAGS.view_num - 1):
-                        view_index = int(cluster_list[22 * p + 2 * view + 3])
-                        view_image_path = os.path.join(
-                            image_folder, ('rect_%03d_%d_r5000.png' % ((view_index + 1), j)))
-                        view_cam_path = os.path.join(cam_folder, ('%08d_cam.txt' % view_index))
-                        paths.append(view_image_path)
-                        paths.append(view_cam_path)
-                    # depth path
-                    depth_image_path = os.path.join(depth_folder, ('depth_map_%04d.pfm' % ref_index))
-                    paths.append(depth_image_path)
-                    sample_list.append(paths)
-        else:
-            # for each reference image
-            j = 5
-            for p in range(0, int(cluster_list[0])):
-                paths = []
-                # ref image
-                ref_index = int(cluster_list[22 * p + 1])
-                ref_image_path = os.path.join(
-                    image_folder, ('rect_%03d_%d_r5000.png' % ((ref_index + 1), j)))
-                ref_cam_path = os.path.join(cam_folder, ('%08d_cam.txt' % ref_index))
-                paths.append(ref_image_path)
-                paths.append(ref_cam_path)
-                # view images
-                for view in range(FLAGS.view_num - 1):
-                    view_index = int(cluster_list[22 * p + 2 * view + 3])
-                    view_image_path = os.path.join(
-                        image_folder, ('rect_%03d_%d_r5000.png' % ((view_index + 1), j)))
-                    view_cam_path = os.path.join(cam_folder, ('%08d_cam.txt' % view_index))
-                    paths.append(view_image_path)
-                    paths.append(view_cam_path)
-                # depth path
-                depth_image_path = os.path.join(depth_folder, ('depth_map_%04d.pfm' % ref_index))
-                paths.append(depth_image_path)
-                sample_list.append(paths)
-        
-    return sample_list
-
-def gen_mvs_list(mode='training'):
-    """output paths in a list: [[I1_path1,  C1_path, I2_path, C2_path, ...(, D1_path)], [...], ...]"""
-    sample_list = []
-    if FLAGS.train_dtu:
-        dtu_sample_list = gen_dtu_mvs_path(FLAGS.dtu_data_root, mode=mode)
-        sample_list = sample_list + dtu_sample_list
     return sample_list
 
 # for testing

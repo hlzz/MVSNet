@@ -63,9 +63,6 @@ tf.app.flags.DEFINE_float('val_ratio', 0,
 # params for config
 tf.app.flags.DEFINE_string('pretrained_model_ckpt_path', None,
                            """Path to restore the model.""")
-# tf.app.flags.DEFINE_string('pretrained_model_ckpt_path', 
-#                            '/home/yoyo/Documents/software/tfmatch/mvs/tf_model/model.ckpt',
-#                            """Path to restore the model.""")
 tf.app.flags.DEFINE_integer('ckpt_step', 0,
                             """ckpt step.""")
 tf.app.flags.DEFINE_boolean('is_training', True,
