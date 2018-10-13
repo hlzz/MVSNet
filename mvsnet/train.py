@@ -193,24 +193,11 @@ def train(traning_list):
                     depth_interval = tf.reshape(
                         tf.slice(cams, [0, 0, 1, 3, 1], [FLAGS.batch_size, 1, 1, 1, 1]), [FLAGS.batch_size])
 
-                    is_master_gpu = False
-                    if i == 0:
-                        is_master_gpu = True
-
                     # inference
-                    depth_map, prob_map = inference(
-                        images, cams, FLAGS.max_d, depth_start, depth_interval, is_master_gpu)
+                    depth_map, prob_map = inference(images, cams, FLAGS.max_d, depth_start, depth_interval)
 
-                    # refinement 
-                    ref_image = tf.squeeze(tf.slice(images, [0, 0, 0, 0, 0], [-1, 1, -1, -1, 3]), axis=1)
-                    refined_depth_map = depth_refine(
-                        depth_map, ref_image, FLAGS.max_d, depth_start, depth_interval, is_master_gpu)
-                    # loss
-                    loss0, less_one_temp, less_three_temp = mvsnet_loss(
+                    loss, less_one_accuracy, less_three_accuracy = mvsnet_loss(
                         depth_map, depth_image, depth_interval)
-                    loss1, less_one_accuracy, less_three_accuracy = mvsnet_loss(
-                        refined_depth_map, depth_image, depth_interval)
-                    loss = (loss0 + loss1) / 2
 
                     # retain the summaries from the final tower.
                     summaries = tf.get_collection(tf.GraphKeys.SUMMARIES, scope)
@@ -288,7 +275,7 @@ def train(traning_list):
                     if step % (FLAGS.display * 10) == 0 and FLAGS.is_training:
                         summary_writer.add_summary(out_summary_op, total_step)
                     # save the model checkpoint periodically
-                    if (total_step % FLAGS.snapshot == 0 or step == (training_sample_size - 1)) and FLAGS.is_training:
+                    if step != 0 and (total_step % FLAGS.snapshot == 0 or step == (training_sample_size - 1)) and FLAGS.is_training:
                         checkpoint_path = os.path.join(FLAGS.save_dir, 'model.ckpt')
                         saver.save(sess, checkpoint_path, global_step=total_step)
                     step += FLAGS.batch_size * FLAGS.num_gpus

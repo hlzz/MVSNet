@@ -69,7 +69,7 @@ def get_propability_map(cv, depth_map, depth_start, depth_interval):
     return prob_map
 
 
-def inference(images, cams, depth_num, depth_start, depth_interval, is_master_gpu=True):
+def inference(images, cams, depth_num, depth_start, depth_interval):
     """ infer depth image from multi-view images and cameras """
 
     # dynamic gpu params
@@ -80,10 +80,7 @@ def inference(images, cams, depth_num, depth_start, depth_interval, is_master_gp
     ref_cam = tf.squeeze(tf.slice(cams, [0, 0, 0, 0, 0], [-1, 1, 2, 4, 4]), axis=1)
 
     # image feature extraction    
-    if is_master_gpu:
-        ref_tower = UniNetDS2({'data': ref_image}, is_training=True, reuse=False)
-    else:
-        ref_tower = UniNetDS2({'data': ref_image}, is_training=True, reuse=True)
+    ref_tower = UniNetDS2({'data': ref_image}, is_training=True, reuse=tf.AUTO_REUSE)
     view_towers = []
     for view in range(1, FLAGS.view_num):
         view_image = tf.squeeze(tf.slice(images, [0, view, 0, 0, 0], [-1, 1, -1, -1, -1]), axis=1)
@@ -118,10 +115,7 @@ def inference(images, cams, depth_num, depth_start, depth_interval, is_master_gp
         cost_volume = tf.stack(depth_costs, axis=1)
 
     # filtered cost volume, size of (B, D, H, W, 1)
-    if is_master_gpu:
-        filtered_cost_volume_tower = RegNetUS0({'data': cost_volume}, is_training=True, reuse=False)
-    else:
-        filtered_cost_volume_tower = RegNetUS0({'data': cost_volume}, is_training=True, reuse=True)
+    filtered_cost_volume_tower = RegNetUS0({'data': cost_volume}, is_training=True, reuse=tf.AUTO_REUSE)
     filtered_cost_volume = tf.squeeze(filtered_cost_volume_tower.get_output(), axis=-1)
 
     # depth map by softArgmin
@@ -143,7 +137,7 @@ def inference(images, cams, depth_num, depth_start, depth_interval, is_master_gp
     # probability map
     prob_map = get_propability_map(probability_volume, estimated_depth_map, depth_start, depth_interval)
 
-    return estimated_depth_map, prob_map#, filtered_depth_map, probability_volume
+    return estimated_depth_map, prob_map
 
 def inference_mem(images, cams, depth_num, depth_start, depth_interval, is_master_gpu=True):
     """ infer depth image from multi-view images and cameras """
@@ -250,7 +244,7 @@ def inference_mem(images, cams, depth_num, depth_start, depth_interval, is_maste
     # return estimated_depth_map, prob_map
 
 
-def depth_refine(init_depth_map, image, depth_num, depth_start, depth_interval, is_master_gpu=True):
+def depth_refine(init_depth_map, image, depth_num, depth_start, depth_interval):#, is_master_gpu=True):
     """ refine depth image with the image """
 
     # normalization parameters
@@ -269,12 +263,11 @@ def depth_refine(init_depth_map, image, depth_num, depth_start, depth_interval, 
     resized_image = tf.image.resize_bilinear(image, [depth_shape[1], depth_shape[2]])
 
     # refinement network
-    if is_master_gpu:
-        norm_depth_tower = RefineNet({'color_image': resized_image, 'depth_image': init_norm_depth_map},
-                                        is_training=True, reuse=False)
-    else:
-        norm_depth_tower = RefineNet({'color_image': resized_image, 'depth_image': init_norm_depth_map},
-                                        is_training=True, reuse=True)
+    #if is_master_gpu:
+    norm_depth_tower = RefineNet({'color_image': resized_image, 'depth_image': init_norm_depth_map}, is_training=True, reuse=tf.AUTO_REUSE)
+    #else:
+    #    norm_depth_tower = RefineNet({'color_image': resized_image, 'depth_image': init_norm_depth_map},
+    #                                    is_training=True, reuse=True)
     norm_depth_map = norm_depth_tower.get_output()
 
     # denormalize depth map
